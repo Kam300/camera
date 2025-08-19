@@ -1,6 +1,8 @@
 package com.example.exempl
 
 import android.content.Context
+import androidx.annotation.OptIn
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage
@@ -8,6 +10,7 @@ import com.google.mlkit.vision.objects.ObjectDetection
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import com.google.mlkit.vision.pose.PoseDetection
 import com.google.mlkit.vision.pose.defaults.PoseDetectorOptions
+import kotlin.math.abs
 
 class PhotoCompositionAnalyzer(private val context: Context) {
 
@@ -24,19 +27,28 @@ class PhotoCompositionAnalyzer(private val context: Context) {
             .build()
     )
 
+    private var lastGuidanceTime = 0L
+    private val guidanceInterval = 3000L // 3 секунды между подсказками
+
+    @OptIn(ExperimentalGetImage::class)
     fun analyzeImage(imageProxy: ImageProxy, onGuidanceGenerated: (String) -> Unit) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastGuidanceTime < guidanceInterval) {
+            imageProxy.close()
+            return
+        }
+
         val mediaImage = imageProxy.image
         if (mediaImage != null) {
             val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
-            // Детекция объектов
             objectDetector.process(image)
                 .addOnSuccessListener { objects ->
-                    // Детекция поз
                     poseDetector.process(image)
                         .addOnSuccessListener { pose ->
                             val guidance = generateCompositionGuidance(objects, pose, imageProxy)
                             if (guidance.isNotEmpty()) {
+                                lastGuidanceTime = currentTime
                                 onGuidanceGenerated(guidance)
                             }
                         }
@@ -64,11 +76,17 @@ class PhotoCompositionAnalyzer(private val context: Context) {
         }
 
         return when {
-            mainSubject == null -> ""
+            mainSubject == null -> {
+                if (objects.isNotEmpty()) {
+                    "Объект найден! Попробуйте расположить его по правилу третей"
+                } else {
+                    "Ищу объекты для съемки..."
+                }
+            }
 
             // Проверка правила третей
             !isInRuleOfThirds(mainSubject.boundingBox, width, height) -> {
-                "Переместите человека ближе к линиям третей для лучшей композиции"
+                "Переместите объект ближе к линиям сетки для лучшей композиции"
             }
 
             // Проверка центровки
@@ -94,7 +112,9 @@ class PhotoCompositionAnalyzer(private val context: Context) {
                 "Поверните телефон горизонтально для лучшего кадра"
             }
 
-            else -> ""
+            else -> {
+                "Отличная композиция! Готов к съемке"
+            }
         }
     }
 
@@ -102,11 +122,10 @@ class PhotoCompositionAnalyzer(private val context: Context) {
         val centerX = boundingBox.centerX().toFloat() / width
         val centerY = boundingBox.centerY().toFloat() / height
 
-        // Линии третей: 1/3 и 2/3
         val thirdLines = listOf(0.33f, 0.67f)
 
         return thirdLines.any { line ->
-            kotlin.math.abs(centerX - line) < 0.1f || kotlin.math.abs(centerY - line) < 0.1f
+            abs(centerX - line) < 0.15f || abs(centerY - line) < 0.15f
         }
     }
 
@@ -114,26 +133,26 @@ class PhotoCompositionAnalyzer(private val context: Context) {
         val centerX = boundingBox.centerX().toFloat() / width
         val centerY = boundingBox.centerY().toFloat() / height
 
-        return kotlin.math.abs(centerX - 0.5f) < 0.15f && kotlin.math.abs(centerY - 0.5f) < 0.15f
+        return abs(centerX - 0.5f) < 0.1f && abs(centerY - 0.5f) < 0.1f
     }
 
     private fun isObjectTooSmall(boundingBox: android.graphics.Rect, width: Int, height: Int): Boolean {
         val objectArea = boundingBox.width() * boundingBox.height()
         val totalArea = width * height
-        return (objectArea.toFloat() / totalArea) < 0.1f
+        return (objectArea.toFloat() / totalArea) < 0.08f
     }
 
     private fun isObjectTooLarge(boundingBox: android.graphics.Rect, width: Int, height: Int): Boolean {
         val objectArea = boundingBox.width() * boundingBox.height()
         val totalArea = width * height
-        return (objectArea.toFloat() / totalArea) > 0.7f
+        return (objectArea.toFloat() / totalArea) > 0.75f
     }
 
     private fun shouldSuggestPortrait(boundingBox: android.graphics.Rect): Boolean {
-        return boundingBox.height() > boundingBox.width() * 1.5f
+        return boundingBox.height() > boundingBox.width() * 1.4f
     }
 
     private fun shouldSuggestLandscape(boundingBox: android.graphics.Rect): Boolean {
-        return boundingBox.width() > boundingBox.height() * 1.5f
+        return boundingBox.width() > boundingBox.height() * 1.4f
     }
 }

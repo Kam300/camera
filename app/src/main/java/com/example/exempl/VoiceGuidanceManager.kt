@@ -8,8 +8,8 @@ class VoiceGuidanceManager(private val context: Context) : TextToSpeech.OnInitLi
 
     private var tts: TextToSpeech? = null
     private var isGuidanceEnabled = true
-    private var lastGuidanceTime = 0L
-    private val guidanceInterval = 3000L // 3 секунды между подсказками
+    private var lastSpeechTime = 0L
+    private val speechInterval = 4000L // 4 секунды между голосовыми подсказками
 
     init {
         tts = TextToSpeech(context, this)
@@ -22,6 +22,9 @@ class VoiceGuidanceManager(private val context: Context) : TextToSpeech.OnInitLi
                 // Fallback на английский
                 tts?.setLanguage(Locale.US)
             }
+            // Настройка скорости речи
+            tts?.setSpeechRate(0.9f)
+            tts?.setPitch(1.0f)
         }
     }
 
@@ -29,14 +32,24 @@ class VoiceGuidanceManager(private val context: Context) : TextToSpeech.OnInitLi
         if (!isGuidanceEnabled || guidance.isEmpty()) return
 
         val currentTime = System.currentTimeMillis()
-        if (currentTime - lastGuidanceTime < guidanceInterval) return
+        if (currentTime - lastSpeechTime < speechInterval) return
 
-        lastGuidanceTime = currentTime
+        lastSpeechTime = currentTime
         tts?.speak(guidance, TextToSpeech.QUEUE_FLUSH, null, null)
     }
 
     fun toggleGuidance() {
         isGuidanceEnabled = !isGuidanceEnabled
+        if (!isGuidanceEnabled) {
+            tts?.stop()
+        }
+    }
+
+    fun setEnabled(enabled: Boolean) {
+        isGuidanceEnabled = enabled
+        if (!enabled) {
+            tts?.stop()
+        }
     }
 
     fun shutdown() {

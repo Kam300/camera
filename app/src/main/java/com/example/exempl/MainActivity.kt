@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                MainScreen()  // Теперь LocalLifecycleOwner доступен через ComponentActivity
+                MainScreen()
             }
         }
     }
@@ -55,13 +55,19 @@ fun PermissionScreen(permissionState: MultiplePermissionsState) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
+            text = "📷 ИИ Помощник Фотографа",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
+
+        Text(
             text = "Для работы приложения необходимы разрешения:",
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
         Text(
-            text = "• Доступ к камере\n• Доступ к микрофону",
+            text = "• Доступ к камере\n• Доступ к микрофону для голосовых подсказок",
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(bottom = 32.dp)
         )
@@ -69,7 +75,8 @@ fun PermissionScreen(permissionState: MultiplePermissionsState) {
         Button(
             onClick = {
                 permissionState.launchMultiplePermissionRequest()
-            }
+            },
+            modifier = Modifier.padding(horizontal = 32.dp)
         ) {
             Text("Предоставить разрешения")
         }

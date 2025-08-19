@@ -8,12 +8,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 
-@Composable
-fun CompositionGuideOverlay(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier.fillMaxSize()) {
-        drawRuleOfThirdsLines()
-    }
-}
 
 private fun DrawScope.drawRuleOfThirdsLines() {
     val width = size.width
